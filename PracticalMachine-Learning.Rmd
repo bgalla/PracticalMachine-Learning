@@ -93,7 +93,7 @@ Model 2 is using Decision Tree
 DecisionTreeModel <- train(classe ~., method='rpart', data=clean_training_data)
 DecisionTreePrediction <- predict(DecisionTreeModel, crossvalidation_data)
 rpart.plot(DecisionTreeModel$finalModel)
-confusionMatrix(crossvalidation_data$classe, decisionTreePrediction)
+confusionMatrix(crossvalidation_data$classe, DecisionTreePrediction)
 ```
 
 ### Gradient Boosting
