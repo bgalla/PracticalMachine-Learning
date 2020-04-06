@@ -1,0 +1,119 @@
+---
+title: "PracticalMachine-Learning"
+author: "Robert Galla"
+date: "4/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Project Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, the goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+##Data Sources
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har.
+The data is avalable through these URLS:
+Training Data:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+Test Data:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+
+```{r Load libraries and data}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(rpart)
+library(rpart.plot)
+training_data_url <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testing_data_url  <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+training_data <- read.csv(url(training_data_url))
+testing_data <- read.csv(url(testing_data_url))
+```
+
+## Data Prep
+
+### Data Cleansing
+Inspection of the data indiactes that columns 1 - 7 do not contain useful data for predictions.
+
+```{r Remove columns 1 - 7}
+dim(training_data)
+training_data <- training_data[,8:160]
+testing_data <- testing_data[,8:160]
+```
+
+This section removes all columns that have near zero variance.
+
+```{r Remove columns with near zero variance }
+no_variance <- nearZeroVar(training_data)
+training_data <- training_data[,-no_variance]
+testing_data <- testing_data[,-no_variance]
+dim(training_data)
+```
+
+This section removes columns where 95% of the rows values are NA
+```{r Remove columns with mostly NA values}
+NACols <-  colSums(is.na(training_data))/nrow(training_data) < 0.95
+training_data <- training_data[,NACols]
+testing_data <- testing_data[,NACols]
+dim(training_data)
+
+```
+
+### Create Cross-validation dataset
+```{r Partition the data into training and crossvalidation}
+inTrain <- createDataPartition(training_data$classe, p=0.75)[[1]]
+clean_training_data <- training_data[inTrain,]
+crossvalidation_data <- training_data[-inTrain,]
+dim(clean_training_data)
+dim(crossvalidation_data)
+```
+
+## Model Tournament
+We will create three models, and choose the model with the highest accuracy for the final predictions
+
+### Random Forest
+Model 1 is using Random Forest
+
+```{r random forest model}
+set.seed(330)
+rfModel <- train(classe ~., method='rf', data=clean_training_data, ntree=128)
+rfPrediction <- predict(rfModel, crossvalidation_data)
+confusionMatrix(crossvalidation_data$classe, rfPrediction)
+```
+
+### Decision Tree
+Model 2 is using Decision Tree
+
+```{r Decision Tree}
+DecisionTreeModel <- train(classe ~., method='rpart', data=clean_training_data)
+DecisionTreePrediction <- predict(DecisionTreeModel, crossvalidation_data)
+rpart.plot(DecisionTreeModel$finalModel)
+confusionMatrix(crossvalidation_data$classe, decisionTreePrediction)
+```
+
+### Gradient Boosting
+Model 3 is using Gradient Boosting
+
+```{r Gradient Boosing}
+GBMmodel <- train(classe ~ ., data = clean_training_data, method = "gbm", verbose = FALSE)
+GBMmodel$finalModel
+GBMPrediction <- predict(GBMmodel, crossvalidation_data)
+
+GBMPrediction_conf <- confusionMatrix(GBMPrediction, crossvalidation_data$classe)
+GBMPrediction_conf
+```
+
+## Prediction
+Based on the accuracy of the three models, we choose the Random Forest model for predictions
+
+```{r Predict using Random Forest}
+predict(rfModel, testing_data)
+```
+
+
+
